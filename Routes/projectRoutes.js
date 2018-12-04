@@ -1,5 +1,6 @@
 const express = require('express')
 
+
 let routes = function(Project){
     const projectRouter = express.Router()
 
@@ -8,29 +9,72 @@ let routes = function(Project){
      .post(function(req, res){
         let project =  new Project(req.body)
 
-        project.save()
-        res.status(201).send(project)
-
+        project._links.self.href = "http://www.jgdeveloper.nl/api/" + project._id
+        project._links.collection.href = "http://www.jgdeveloper.nl/api/"
+        if(!req.body.title || !req.body.info || !req.body.completed){
+        res.sendStatus(400)
+        return
+        }else{
+            console.log("test")
+                project.save(function(err){
+                    console.log('testtttt')
+                if(err){
+                    console.log(err)
+                    res.send(err)
+                }else{
+                    res.status(201).send(project)
+                }
+        })}
+        console.log(req.body)
     })
     .get(function(req, res){
-
-        var query = {}
-
-        if(req.query.title)
-        {
-            query.title = req.query.title
-        }
-
-        Project.find(query,function(err,projects){
-            if(err)
-                res.status(500).send(err)
-            else
-                res.json(projects)
+        const perPage =  10
+        const page = req.params.start ||1
+        const start = parseInt(req.query.start)
+        const limit = parseInt(req.query.limit)
+        Project.find({})
+        .skip((perPage * page)- perPage)
+        .limit(limit)
+        .exec(function(err, projects){
+           Project.count().exec(function(err, count){
+                if(err) return next(err)
+                let maxPage = Math.ceil(count/limit)
+            let paginate = {
+                items: projects,
+                _links:{ self: {href: "http://www.jgdeveloper.nl/api"}},
+                pagination: {
+                    currentPage: page,
+                    currentItems: limit || count ,
+                    totalPages: maxPage,
+                    totalItems: count,
+                    _links: {
+                        first: {
+                            page: 1,
+                            href: "http://www.jgdeveloper.nl/api/?start=1&limit=" + limit
+                        },
+                        last: {
+                            page: maxPage,
+                            href: "http://www.jgdeveloper.nl/api/?start="+ ((count-limit)+1) + "&limit=" + limit
+                        },
+                        previous: {
+                            page: (page - 1) ,
+                            href: "http://www.jgdeveloper.nl/api/?start="+(start - limit) + "&limit=" + limit
+                        },
+                        next: {
+                            page: (page + 1),
+                            href: "http://www.jgdeveloper.nl/api/?start="+(start + limit) + "&limit=" + limit
+                        }
+                    }
+                }
+            }
+            res.json(paginate)
+        })
         });
-    });
+
+    })
         projectRouter.use('/:itemId',function(req,res,next){
             Project.findById(req.params.itemId,function(err,project){
-                if(err)
+               if(err)
                     res.status(500).send(err)
                 else if(project){
                     req.project = project
@@ -41,26 +85,28 @@ let routes = function(Project){
         })
     projectRouter.route('/:itemId')
     .get(function(req, res){
-            
-        res.json(req.project);
-    })
+
+        res.json(req.project);  })
     .put(function(req,res){
         Project.findById(req.params.itemId,function(err,project){
-            if(err)
-                res.status(500).send(err)
-            else
+           if(!req.body.title || !req.body.info || !req.body.completed){
+                res.sendStatus(400)
+                return
+
+              } else{
                 project.title = req.body.title
                 project.info = req.body.info
                 project.date = req.body.date
-                project.read = req.body.read
+                project.completed = req.body.completed
                 project.save(function(err){
                     if(err)
                         res.status(500).send(err)
                     else{
                         res.json(req.project)
                     }
-                });
-        })
+
+                } );
+       }         })
     })
     .patch(function(req,res){
         if(req.body._id)
@@ -81,9 +127,24 @@ let routes = function(Project){
                 res.status(500).send(err)
             }else
                 res.status(204).send('deleted')
-        })
-    })
+        })  })
     return projectRouter
 }
 
 module.exports = routes
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

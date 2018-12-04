@@ -12,6 +12,8 @@
     "body-parser": "^1.18.3",
     "express": "^4.16.4",
     "mongoose": "^5.3.13",
+    "mongoose-paginate": "^5.0.3",
+    "mongoose-paginate-v2": "^1.0.13",
     "nodemon": "^1.18.6"
   }
 }
